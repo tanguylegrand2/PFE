@@ -27,18 +27,23 @@ def generate_S_matrix(nbSources, nbTimePoints, varList, correlation_List):
     k = 0
     for i in range(nbSources):
         for j in range(i + 1, nbSources):
-            covariance_matrix[i, j] = correlation_List[k]
-            k += 1
+            covariance_matrix[i, j] = _get_covariance(correlation_List[k], varList[i], varList[j])
+            k+=1
     # Remplissage par symétrie de la moitié bas-droite
     covariance_matrix += covariance_matrix.T
     # Remplissage de la diagonale de la marice de covariance
     covariance_matrix += np.diag(varList)
-
+    print(covariance_matrix)
     # Utiliser la décomposition de Cholesky pour obtenir une matrice L telle que L * transpose(L) = covariance_matrix
     L_cholesky = np.linalg.cholesky(covariance_matrix)
     # Générer la matrice S en utilisant la matrice L_cholesky
     S = np.dot(np.random.normal(0, 1, (nbTimePoints, nbSources)) + 1j * np.random.normal(0, 1, (nbTimePoints, nbSources)), L_cholesky.T)  # Chaque ligne est un signal source
     return S
+
+def _get_covariance(correlation_coefficient, varA, varB):
+    # Calcule une covariance à partir d'une corrélation
+    covariance = correlation_coefficient * np.sqrt(varA * varB) # Calcul de la covariance
+    return covariance
 
 def generate_A_matrix(nbSensors, thetaList): # Génération de la Steering matrix
     A = []
