@@ -17,3 +17,4 @@ varList = [var1, var2]
 
 X = generate_X_matrix(nbSources, nbSensors, nbTimePoints, thetaList, varList, correlation_List, signal_noise_ratio)
 estimated_angles = music_method(X, nbSensors, nbSources, print_angles=True, draw_plot=True)
+print(estimated_angles)
