@@ -90,3 +90,27 @@ def generate_R_hat(X):
     # Calcul de la matrice de covariance R_hat du signal reçu
     R_hat = np.cov(X, rowvar=False)
     return R_hat
+
+def generate_R_hat_with_phase(X):
+    """
+    Calcul de la matrice de covariance R_hat du signal reçu avec un canal supplémentaire pour la phase.
+    
+    Args:
+    - X (np.ndarray): La matrice des signaux reçus de forme (nbTimePoints, nbSensors), où chaque élément est complexe.
+    
+    Returns:
+    - R_hat_extended (np.ndarray): Une version étendue de la matrice de covariance avec un canal supplémentaire pour la phase.
+      Sa forme sera (nbSensors, nbSensors, 3), où les deux premiers canaux sont les parties réelle et imaginaire de R_hat,
+      et le troisième canal est la phase de chaque élément.
+    """
+    R_hat = np.cov(X, rowvar=False)
+    phase = np.angle(R_hat)
+    
+    # Séparez les parties réelle et imaginaire de R_hat
+    real_part = np.real(R_hat)
+    imag_part = np.imag(R_hat)
+    
+    # Empilez les trois canaux
+    R_hat_extended = np.stack((real_part, imag_part, phase), axis=-1)
+    
+    return R_hat_extended
