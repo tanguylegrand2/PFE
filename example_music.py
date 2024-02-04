@@ -1,5 +1,5 @@
-from Signal_generator.generate_signal import generate_X_matrix
-from Algorithmes.music import music_method
+from signal_generator.generate_signal import generate_X_matrix
+from algorithmes.music import music_method
 
 nbSources = 2 # Nombre de sources
 nbSensors = 10 # Nombre de capteurs

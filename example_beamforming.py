@@ -1,5 +1,5 @@
-from Signal_generator.generate_signal import generate_X_matrix
-from Algorithmes.beamforming import beamforming_method
+from signal_generator.generate_signal import generate_X_matrix
+from algorithmes.beamforming import beamforming_method
 
 nbSources = 2 # Nombre de sources
 nbSensors = 10 # Nombre de capteurs
