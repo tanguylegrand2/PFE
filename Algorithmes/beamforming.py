@@ -1,6 +1,6 @@
 import numpy as np
 from Signal_generator.generate_signal import generate_steering_vector, generate_R_hat
-from plots.draw_plot import plot_single_beaforming
+from Plots.draw_plot import plot_single_beaforming
 from scipy.signal import find_peaks
 
 def beamforming_method(X, nbSensors, nbSources, print_angles = False, draw_plot = False):
