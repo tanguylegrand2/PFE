@@ -33,7 +33,6 @@ def generate_S_matrix(nbSources, nbTimePoints, varList, correlation_List):
     covariance_matrix += covariance_matrix.T
     # Remplissage de la diagonale de la marice de covariance
     covariance_matrix += np.diag(varList)
-    print(covariance_matrix)
     # Utiliser la décomposition de Cholesky pour obtenir une matrice L telle que L * transpose(L) = covariance_matrix
     L_cholesky = np.linalg.cholesky(covariance_matrix)
     # Générer la matrice S en utilisant la matrice L_cholesky

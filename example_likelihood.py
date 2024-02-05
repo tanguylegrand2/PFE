@@ -1,5 +1,5 @@
 from Signal_generator.generate_signal import generate_X_matrix
-from Algorithmes.music import music_method
+from Algorithmes.maximum_likelihood import maximum_likelihood_estimation
 
 nbSources = 2 # Nombre de sources
 nbSensors = 10 # Nombre de capteurs
@@ -10,10 +10,10 @@ theta2 = -5 # Angle entre la perpendiculaire à la ligne de capteurs, et la sour
 var1 = 1 # Variance du signal 1
 var2 = 1 # Variance du signal 2
 correlation_List = [0.4] # Liste des corrélations. Il y a une corrélation nécéssaire pour chaque paire distincte de sources différentes: 0 pour 1 source, 1 pour 2 sources, 3 pour 3 sources, 6 pour 4 sources etc...
-# Ordre de remplisage de la correlation_List: de gauche à droite et ligne par ligne, moitié haut-droite de la matrice uniquement, puis symétrie de ces valeurs pour la moitié bas-gauche
+# Ordre de remplisage de la correlation_List: de gauche à droite et ligne par ligne, moitié haut-droite de la matrice uniquement, puis symétrie de ces valeurs pour la moitié bas-gauche.
 
 thetaList = [theta1, theta2]
 varList = [var1, var2]
 
 X = generate_X_matrix(nbSources, nbSensors, nbTimePoints, thetaList, varList, correlation_List, signal_noise_ratio)
-estimated_angles = music_method(X, nbSensors, nbSources, print_angles=True, draw_plot=True)
+estimated_angles = maximum_likelihood_estimation(X, nbSensors, nbSources, print_angles=True)
