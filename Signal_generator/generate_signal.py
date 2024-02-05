@@ -111,5 +111,6 @@ def generate_R_hat_with_phase(X):
     
     # Empilez les trois canaux
     R_hat_extended = np.stack((real_part, imag_part, phase), axis=-1)
+    R_hat_extended = np.transpose(R_hat_extended, (2, 0, 1))
     
     return R_hat_extended
