@@ -35,3 +35,4 @@ def estimate_angles(nbSources, music_spectrum, angles_range):
     top_peaks = sorted(sorted_peaks[:nbSources]) # Sélectionnez les deux plus grands pics
     estimated_angles = angles_range[top_peaks] # Obtenez les angles estimés correspondant aux deux pics
     return estimated_angles
+
