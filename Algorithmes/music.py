@@ -30,8 +30,15 @@ def music_method(X, nbSensors, nbSources, print_angles = False, draw_plot = Fals
     return estimated_angles
 
 def estimate_angles(nbSources, music_spectrum, angles_range):
-    all_peaks, _ = find_peaks(np.real(music_spectrum), height=0)  # height=0 pour inclure tous les pics
-    sorted_peaks = sorted(all_peaks, key=lambda x: music_spectrum[x], reverse=True) # Triez les pics par amplitude dans l'ordre décroissant
-    top_peaks = sorted(sorted_peaks[:nbSources]) # Sélectionnez les deux plus grands pics
-    estimated_angles = angles_range[top_peaks] # Obtenez les angles estimés correspondant aux deux pics
+    # Ensure that music_spectrum is a 1-D array
+    if not np.ndim(music_spectrum) == 1:
+        # Flatten the array if it's multidimensional
+        music_spectrum = music_spectrum.flatten()
+
+    all_peaks, _ = find_peaks(np.real(music_spectrum), height=0)
+    sorted_peaks = sorted(all_peaks, key=lambda x: music_spectrum[x], reverse=True)
+    top_peaks = sorted(sorted_peaks[:nbSources])
+    estimated_angles = angles_range[top_peaks]
     return estimated_angles
+
+
