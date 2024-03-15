@@ -2,7 +2,7 @@ from Signal_generator.generate_signal import generate_X_matrix
 from Algorithmes.beamforming import beamforming_method
 
 nbSources = 2 # Nombre de sources
-nbSensors = 8 # Nombre de capteurs
+nbSensors = 9 # Nombre de capteurs
 nbTimePoints = 100 # Nombre de points temporels
 signal_noise_ratio = 3 # Rapport signal sur bruit en décibels. Si 'False', cela revient à une absence totale de bruit.
 theta1 = -7 # Angle entre la perpendiculaire à la ligne de capteurs, et la source 1
