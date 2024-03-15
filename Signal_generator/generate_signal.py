@@ -8,12 +8,23 @@ def generate_noise(sd, size):
     noise_vector = np.vectorize(complex)(real_part, imag_part)
     return noise_vector
 
-def generate_steering_vector(nbSensors, theta, perturbation_parameter_sd=0, d=1, wavelength=2):
-    # Calcul du calibraion_parameter
-    perturbation_parameter = np.random.normal(1, perturbation_parameter_sd)
+def generate_steering_vector(nbSensors, theta, perturbation_parameter_sd=0, d=1, wavelength=2, get_CramerRao_data=False):
     # Génération du steering vector
-    steering_vector = np.exp(-1j * perturbation_parameter * np.arange(nbSensors) * 2 * np.pi * d / wavelength * np.sin(np.radians(theta)))
-    return steering_vector
+    steering_vector = []
+    if get_CramerRao_data:
+        D_t = []
+        for i in range(nbSensors):
+            # Calcul du perturbation_parameter
+            perturbation_parameter = np.random.normal(1, perturbation_parameter_sd)
+            steering_vector.append(np.exp(-1j * perturbation_parameter * (i+1) * 2 * np.pi * d / wavelength * np.sin(np.radians(theta))))
+            D_t.append(-1j * perturbation_parameter * (i+1) * 2 * np.pi * d / wavelength * np.cos(np.radians(theta)) * np.exp(-1j * perturbation_parameter * (i+1) * 2 * np.pi * d / wavelength * np.sin(np.radians(theta))))
+        return steering_vector, D_t
+    else:
+        for i in range(nbSensors):
+            # Calcul du perturbation_parameter
+            perturbation_parameter = np.random.normal(1, perturbation_parameter_sd)
+            steering_vector.append(np.exp(-1j * perturbation_parameter * (i+1) * 2 * np.pi * d / wavelength * np.sin(np.radians(theta))))
+        return steering_vector
 
 def generate_S_matrix(nbSources, nbTimePoints, var_ratio, correlation_List, SNR_dB, get_CramerRao_data=False):
     # Conversion du SNR en linéaire
@@ -55,50 +66,50 @@ def _get_covariance(correlation_coefficient, varA, varB):
     covariance = correlation_coefficient * np.sqrt(varA * varB) # Calcul de la covariance
     return covariance
 
-def generate_A_matrix(nbSensors, thetaList, perturbation_parameter_sd): # Génération de la Steering matrix
+def generate_A_matrix(nbSensors, thetaList, perturbation_parameter_sd, get_CramerRao_data=False): # Génération de la Steering matrix
     A = []
-    for theta in thetaList:
-        A_t = generate_steering_vector(nbSensors, theta, perturbation_parameter_sd)
-        A.append(A_t)
-    A = np.transpose(np.array(A))
-    return A
+    if get_CramerRao_data:
+        D = []
+        for theta in thetaList:
+            A_t, D_t = generate_steering_vector(nbSensors, theta, perturbation_parameter_sd, get_CramerRao_data=True)
+            A.append(A_t)
+            D.append(D_t)
+        A = np.transpose(np.array(A))
+        D = np.transpose(np.array(D))
+        return A, D
+    else:
+        for theta in thetaList:
+            A_t = generate_steering_vector(nbSensors, theta, perturbation_parameter_sd)
+            A.append(A_t)
+        A = np.transpose(np.array(A))
+        return A
 
 def generate_X_matrix(nbSources, nbSensors, nbTimePoints, thetaList, var_ratio, correlation_List, signal_noise_ratio, perturbation_parameter_sd, get_CramerRao_data=False): # Génération de la matrice des signaux reçus
     # Vérification que le nombre d'angles theta fournis est bon
     if len(thetaList) != nbSources:
         raise ValueError("Provide the correct number of thetas. You need to have one theta for each source.")
-    # Création dela matrice S
+    # Création des matrices S et A
     if get_CramerRao_data:
         S, S_covariance_matrix = generate_S_matrix(nbSources, nbTimePoints, var_ratio, correlation_List, signal_noise_ratio, get_CramerRao_data)
+        A, D = generate_A_matrix(nbSensors, thetaList, perturbation_parameter_sd, get_CramerRao_data)
     else:
         S = generate_S_matrix(nbSources, nbTimePoints, var_ratio, correlation_List, signal_noise_ratio)
-    # Création dela matrice A
-    A = generate_A_matrix(nbSensors, thetaList, perturbation_parameter_sd)
+        A = generate_A_matrix(nbSensors, thetaList, perturbation_parameter_sd)
+
     # Initialisation de X
     X = []
 
     # Implémentation du rapport signal sur bruit (Signal Noise Ratio, SNR)
-    if signal_noise_ratio is not False:
-        signal_power = np.mean(np.abs(S)**2) # Calcul de la puissance du signal à partir de la matrice S
-        noise_power = signal_power / 10**(signal_noise_ratio / 10) # Calculez la puissance du bruit en fonction du SNR
-        #Création de la matrice X
-        for i in range(nbTimePoints):
-            b_t = generate_noise(np.sqrt(noise_power), nbSensors) # Bruit
-            X_t = np.dot(A, S[i]) + b_t # Signal reçu à un instant t
-            X.append(X_t)
-        X = np.array(X)
-    else:
-        #Création de la matrice X
-        for i in range(nbTimePoints):
-            b_t = generate_noise(np.sqrt(2**-30), nbSensors) # Le Beamforming ne fonctionne pas si je ne rajoute pas un bruit minime pour une raison qui m'échappe
-            X_t = np.dot(A, S[i]) + b_t# Signal reçu à un instant t
-            X.append(X_t)
-            if i < 1:
-                print(np.dot(A, S[i]))
-                print(X_t)
-        X = np.array(X)
+    noise_power = 1
+    #Création de la matrice X
+    for i in range(nbTimePoints):
+        b_t = generate_noise(np.sqrt(noise_power), nbSensors) # Bruit
+        X_t = A @ S[i] + b_t # Signal reçu à un instant t
+        X.append(X_t)
+    X = np.array(X)
+
     if get_CramerRao_data:
-        return X, A, S_covariance_matrix
+        return X, A, S_covariance_matrix, D
     else:
         return X
 
