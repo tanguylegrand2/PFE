@@ -35,15 +35,15 @@ def run_comparison(parameter_to_compare, algorithms_to_compare, nbiterations, nb
         for _ in range(nbiterations):
             # Génération du signal
             if parameter_to_compare == "snr":
-                X, A, P = generate_X_matrix(nbSources, nbSensors, nbTimePoints, theta, var_ratio, correlation, value, perturbation_parameter_sd, get_CramerRao_data=True)
+                X, A, P, D = generate_X_matrix(nbSources, nbSensors, nbTimePoints, theta, var_ratio, correlation, value, perturbation_parameter_sd, get_CramerRao_data=True)
             elif parameter_to_compare == "nbTimePoints":
-                X, A, P = generate_X_matrix(nbSources, nbSensors, value, theta, var_ratio, correlation, snr, perturbation_parameter_sd, get_CramerRao_data=True)
+                X, A, P, D = generate_X_matrix(nbSources, nbSensors, value, theta, var_ratio, correlation, snr, perturbation_parameter_sd, get_CramerRao_data=True)
             elif parameter_to_compare == "correlation":
-                X, A, P = generate_X_matrix(nbSources, nbSensors, nbTimePoints, theta, var_ratio, value, snr, perturbation_parameter_sd, get_CramerRao_data=True)
+                X, A, P, D = generate_X_matrix(nbSources, nbSensors, nbTimePoints, theta, var_ratio, value, snr, perturbation_parameter_sd, get_CramerRao_data=True)
             elif parameter_to_compare == "var_ratio":
-                X, A, P = generate_X_matrix(nbSources, nbSensors, nbTimePoints, theta, value, correlation, snr, perturbation_parameter_sd, get_CramerRao_data=True)
+                X, A, P, D = generate_X_matrix(nbSources, nbSensors, nbTimePoints, theta, value, correlation, snr, perturbation_parameter_sd, get_CramerRao_data=True)
             elif parameter_to_compare == "perturbation_parameter_sd":
-                X, A, P = generate_X_matrix(nbSources, nbSensors, nbTimePoints, theta, var_ratio, correlation, snr, value, get_CramerRao_data=True)
+                X, A, P, D = generate_X_matrix(nbSources, nbSensors, nbTimePoints, theta, var_ratio, correlation, snr, value, get_CramerRao_data=True)
             
             # Exécution de chaque algorithme
             for name, algorithm_function in algorithms_to_compare.items():
@@ -73,7 +73,7 @@ def run_comparison(parameter_to_compare, algorithms_to_compare, nbiterations, nb
                 MSE_results[name][i] = np.nan
 
         # Calcul de la borne de Cramer-Rao pour la comparaison
-        Cramer_Rao[i] = get_CramerRao(nbSensors, nbTimePoints, A, P, theta)
+        Cramer_Rao[i] = get_CramerRao(nbTimePoints, A, P, D)
         print("--------------------------------")
 
     # Affichage des résultats
@@ -93,7 +93,7 @@ def run_comparison(parameter_to_compare, algorithms_to_compare, nbiterations, nb
 def remove_outliers(real_theta_list, theta_hat_list):
     real_theta_clean, theta_hat_clean = [], []
     for real_theta, theta_hat in zip(real_theta_list, theta_hat_list):
-        if all(abs(rt - th) <= 4 for rt, th in zip(real_theta, theta_hat)):  # On retire l'outlier si l'estimation d'un des deux angles est à plus de 4 degrés de la valeur réelle
+        if all(abs(rt - th) <= 5 for rt, th in zip(real_theta, theta_hat)):  # On retire l'outlier si l'estimation d'un des deux angles est à plus de 4 degrés de la valeur réelle
             real_theta_clean.append(real_theta)
             theta_hat_clean.append(theta_hat)
     return real_theta_clean, theta_hat_clean
@@ -106,19 +106,8 @@ def calculate_MSE(real_theta, theta_hat, two_symetrical_angles):
         mse = np.mean([(rt[0] - th[0]) ** 2 for rt, th in zip(real_theta, theta_hat)])
     return mse
 
-def generate_D_matrix(theta, nbSensors, d=1, wavelength=2):
-    # Générer la matrice dérivée D en dérivant la matrice A par rapport aux angles theta.
-    D = []
-    for angle in theta:
-        d_theta = np.radians(angle)
-        derivative_vector = (-1j * np.arange(nbSensors) * 2 * np.pi * d / wavelength * np.cos(d_theta) * np.exp(-1j * np.arange(nbSensors) * 2 * np.pi * d / wavelength * np.sin(d_theta)))
-        D.append(derivative_vector)
-    D = np.transpose(np.array(D))
-    return D
-
-def get_CramerRao(nbSensors, nbTimePoints, A, P, theta):
+def get_CramerRao(nbTimePoints, A, P, D):
     noise_variance = 1  # Sigma est fixé à 1
-    D = generate_D_matrix(theta, nbSensors)
     term = np.linalg.inv((D.conj().T @ (np.eye(A.shape[0]) - A @ np.linalg.inv(A.conj().T @ A) @ A.conj().T) @ D) * P.T)
     crlb = np.diag(term).real[0] / (2 * nbTimePoints) * noise_variance
     print(f"-----\nValeur de la Cramer Rao Lower Bound : {crlb}")
