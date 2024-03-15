@@ -123,3 +123,70 @@ def get_CramerRao(nbSensors, nbTimePoints, A, P, theta):
     crlb = np.diag(term).real[0] / (2 * nbTimePoints) * noise_variance
     print(f"-----\nValeur de la Cramer Rao Lower Bound : {crlb}")
     return crlb
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+import time
+import tensorflow as tf
+import torch
+
+def run_dl_model_comparison(models, data, labels, epochs, batch_size, parameter_to_compare, parameter_values):
+    valid_parameters = ["epochs", "batch_size"]
+    if parameter_to_compare not in valid_parameters:
+        raise ValueError(f"parameter_to_compare doit être l'un des suivants : {valid_parameters}")
+
+    loss_results = {name: np.zeros(len(parameter_values)) for name, _ in models.items()}
+    accuracy_results = {name: np.zeros(len(parameter_values)) for name, _ in models.items()}
+    execution_times = {name: [] for name, _ in models.items()}
+
+    for i, value in enumerate(parameter_values):
+        print(f"\n----- Testing with {parameter_to_compare} = {value} -----")
+        for name, model in models.items():
+            print(f"Training {name}...")
+
+            if parameter_to_compare == "epochs":
+                chosen_epochs = value
+                chosen_batch_size = batch_size
+            elif parameter_to_compare == "batch_size":
+                chosen_epochs = epochs
+                chosen_batch_size = value
+
+            start_time = time.time()
+            history = model.fit(data, labels, epochs=chosen_epochs, batch_size=chosen_batch_size, verbose=0)
+            end_time = time.time()
+            
+            execution_time = end_time - start_time
+            execution_times[name].append(execution_time)
+
+            loss = history.history['loss'][-1]
+            accuracy = history.history['accuracy'][-1]
+
+            loss_results[name][i] = loss
+            accuracy_results[name][i] = accuracy
+
+            print(f"{name} - Loss: {loss:.4f}, Accuracy: {accuracy:.4f}, Time: {execution_time:.2f}s")
+
+    # Plotting results
+    plt.figure(figsize=(12, 6))
+    for name in models.keys():
+        plt.plot(parameter_values, loss_results[name], label=f'{name} Loss')
+        plt.plot(parameter_values, accuracy_results[name], label=f'{name} Accuracy', linestyle='--')
+
+    plt.title(f'Model Comparison by {parameter_to_compare}')
+    plt.xlabel(parameter_to_compare)
+    plt.ylabel('Metric Value')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+    plt.figure(figsize=(12, 6))
+    for name in models.keys():
+        plt.plot(parameter_values, execution_times[name], label=f'{name} Execution Time')
+
+    plt.title(f'Model Execution Time by {parameter_to_compare}')
+    plt.xlabel(parameter_to_compare)
+    plt.ylabel('Time (s)')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
