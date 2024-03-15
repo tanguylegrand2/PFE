@@ -8,59 +8,72 @@ def generate_noise(sd, size):
     noise_vector = np.vectorize(complex)(real_part, imag_part)
     return noise_vector
 
-def generate_steering_vector(nbSensors, theta, d = 1, wavelength = 2):
+def generate_steering_vector(nbSensors, theta, perturbation_parameter_sd=0, d=1, wavelength=2):
+    # Calcul du calibraion_parameter
+    perturbation_parameter = np.random.normal(1, perturbation_parameter_sd)
     # Génération du steering vector
-    steering_vector = np.exp(-1j * np.arange(nbSensors) * 2 * np.pi * d / wavelength * np.sin(np.radians(theta)))
+    steering_vector = np.exp(-1j * perturbation_parameter * np.arange(nbSensors) * 2 * np.pi * d / wavelength * np.sin(np.radians(theta)))
     return steering_vector
 
-def generate_S_matrix(nbSources, nbTimePoints, varList, correlation_List):
-    # Vérification que le nombre de variances fournies est bon
-    if len(varList) != nbSources:
-        raise ValueError("Provide the correct number of variances. You need to have one variance for each source.")
-    # Vérification que le nombre de corrélations fournies est bon
+def generate_S_matrix(nbSources, nbTimePoints, var_ratio, correlation_List, SNR_dB, get_CramerRao_data=False):
+    # Conversion du SNR en linéaire
+    SNR_linear = 10 ** (SNR_dB / 10)
+    
+    # Initialisation des variances des signaux basées sur le rapport de variance et le SNR
+    # On commence par une liste de variances hypothétiques où le premier signal a une variance de 1
+    variances_hypo = [1] + [1 * ratio for ratio in var_ratio]
+    
+    # Ajustement des variances pour respecter le SNR global
+    total_variances_hypo = sum(variances_hypo)
+    var1 = SNR_linear / total_variances_hypo  # Ajustement de la variance du premier signal pour respecter le SNR
+    adjusted_variances = [var1] + [var1 * ratio for ratio in var_ratio]
+    
+    # Gestion des erreurs pour la corrélation et les variances
     if len(correlation_List) != nbSources * (nbSources - 1) // 2:
-        raise ValueError("Provide the correct number of correlation coefficients. You need to have one correlation for each distinct pair of sources.")
-
-    # Création d'une matrice carrée vide
+        raise ValueError("Incorrect number of correlation coefficients.")
+    
+    # Construction de la matrice de covariance avec les variances ajustées et les corrélations
     covariance_matrix = np.zeros((nbSources, nbSources))
-    # Remplissage de la moitié haut-droite de la matrice de covariance
     k = 0
     for i in range(nbSources):
         for j in range(i + 1, nbSources):
-            covariance_matrix[i, j] = _get_covariance(correlation_List[k], varList[i], varList[j])
-            k+=1
-    # Remplissage par symétrie de la moitié bas-droite
+            covariance_matrix[i, j] = _get_covariance(correlation_List[k], adjusted_variances[i], adjusted_variances[j])
+            k += 1
     covariance_matrix += covariance_matrix.T
-    # Remplissage de la diagonale de la marice de covariance
-    covariance_matrix += np.diag(varList)
-    print(covariance_matrix)
-    # Utiliser la décomposition de Cholesky pour obtenir une matrice L telle que L * transpose(L) = covariance_matrix
+    covariance_matrix += np.diag(adjusted_variances)
+    
+    # Génération de la matrice S avec la décomposition de Cholesky
     L_cholesky = np.linalg.cholesky(covariance_matrix)
-    # Générer la matrice S en utilisant la matrice L_cholesky
-    S = np.dot(np.random.normal(0, 1, (nbTimePoints, nbSources)) + 1j * np.random.normal(0, 1, (nbTimePoints, nbSources)), L_cholesky.T)  # Chaque ligne est un signal source
-    return S
+    S = np.dot(np.random.normal(0, 1, (nbTimePoints, nbSources)) + 1j * np.random.normal(0, 1, (nbTimePoints, nbSources)), L_cholesky.T)
+    if get_CramerRao_data:
+        return S, covariance_matrix
+    else:
+        return S
 
 def _get_covariance(correlation_coefficient, varA, varB):
     # Calcule une covariance à partir d'une corrélation
     covariance = correlation_coefficient * np.sqrt(varA * varB) # Calcul de la covariance
     return covariance
 
-def generate_A_matrix(nbSensors, thetaList): # Génération de la Steering matrix
+def generate_A_matrix(nbSensors, thetaList, perturbation_parameter_sd): # Génération de la Steering matrix
     A = []
     for theta in thetaList:
-        A_t = generate_steering_vector(nbSensors, theta)
+        A_t = generate_steering_vector(nbSensors, theta, perturbation_parameter_sd)
         A.append(A_t)
     A = np.transpose(np.array(A))
     return A
 
-def generate_X_matrix(nbSources, nbSensors, nbTimePoints, thetaList, varList, correlation_List, signal_noise_ratio): # Génération de la matrice des signaux reçus
+def generate_X_matrix(nbSources, nbSensors, nbTimePoints, thetaList, var_ratio, correlation_List, signal_noise_ratio, perturbation_parameter_sd, get_CramerRao_data=False): # Génération de la matrice des signaux reçus
     # Vérification que le nombre d'angles theta fournis est bon
     if len(thetaList) != nbSources:
         raise ValueError("Provide the correct number of thetas. You need to have one theta for each source.")
     # Création dela matrice S
-    S = generate_S_matrix(nbSources, nbTimePoints, varList, correlation_List)
+    if get_CramerRao_data:
+        S, S_covariance_matrix = generate_S_matrix(nbSources, nbTimePoints, var_ratio, correlation_List, signal_noise_ratio, get_CramerRao_data)
+    else:
+        S = generate_S_matrix(nbSources, nbTimePoints, var_ratio, correlation_List, signal_noise_ratio)
     # Création dela matrice A
-    A = generate_A_matrix(nbSensors, thetaList)
+    A = generate_A_matrix(nbSensors, thetaList, perturbation_parameter_sd)
     # Initialisation de X
     X = []
 
@@ -84,7 +97,10 @@ def generate_X_matrix(nbSources, nbSensors, nbTimePoints, thetaList, varList, co
                 print(np.dot(A, S[i]))
                 print(X_t)
         X = np.array(X)
-    return X
+    if get_CramerRao_data:
+        return X, A, S_covariance_matrix
+    else:
+        return X
 
 def generate_R_hat(X):
     # Calcul de la matrice de covariance R_hat du signal reçu

@@ -10,7 +10,7 @@ def music_method(X, nbSensors, nbSources, print_angles = False, draw_plot = Fals
     # Calculer les vecteurs propres et les valeurs propres
     _, eigenvectors = np.linalg.eigh(R_hat)
     # Sélectionner les k plus grandes valeurs propres
-    noise_subspace = eigenvectors[:, :nbSources]
+    noise_subspace = eigenvectors[:, :-nbSources]
 
     # Calcul du spectre MUSIC
     music_spectrum = np.zeros_like(angles_range, dtype=float)
