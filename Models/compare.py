@@ -3,6 +3,8 @@ import torch
 import os
 import json
 from datetime import datetime
+import matplotlib.pyplot as plt
+
 
 def save_model_hyperparams_and_metadata(model, hyperparameters, training_metadata, directory_name):
     # Base directory
@@ -58,3 +60,32 @@ def load_model_and_hyperparams(directory_name, model_class):
         hyperparameters = json.load(f)
 
     return model, hyperparameters
+
+
+
+def plot_mse(model1_results,model2_results):
+    # Création des graphiques
+    plt.figure(figsize=(10, 5))
+
+    # Graphique 1 : Comparaison des MSE pour chaque SNR
+    plt.subplot(1, 2, 1)
+    plt.plot(model1_results['SNR'], model1_results['MSE'], marker='o', label='Modèle 1')
+    plt.plot(model2_results['SNR'], model2_results['MSE'], marker='o', label='Modèle 2')
+    plt.xlabel('SNR (dB)')
+    plt.ylabel('MSE (degrés)')
+    plt.title('Comparaison des MSE pour chaque SNR')
+    plt.legend()
+
+    # Graphique 2 : Comparaison des performances des modèles à différents SNR
+    plt.subplot(1, 2, 2)
+    plt.bar([1, 2], [model1_results['MSE'][0], model2_results['MSE'][0]], tick_label=['Modèle 1', 'Modèle 2'], label='-10 dB')
+    plt.bar([1, 2], [model1_results['MSE'][1], model2_results['MSE'][1]], tick_label=['Modèle 1', 'Modèle 2'], label='0 dB', alpha=0.5)
+    plt.xlabel('Modèle')
+    plt.ylabel('MSE (degrés)')
+    plt.title('Comparaison des performances des modèles à différents SNR')
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()
+
+
