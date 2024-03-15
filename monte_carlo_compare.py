@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import time
+
 from Signal_generator.generate_signal import generate_X_matrix
 from Algorithmes.beamforming import beamforming_method
 from Algorithmes.music import music_method
@@ -25,6 +27,8 @@ def run_comparison(parameter_to_compare, algorithms_to_compare, nbSimulations, n
     MSE_results = {name: np.zeros(len(parameter_to_compare_values)) for name in algorithms_to_compare.keys()}
     Cramer_Rao = np.zeros(len(parameter_to_compare_values))
 
+    execution_times = {name: [] for name in algorithms_to_compare.keys()}
+
     # Boucle principale pour les simulations
     for i, value in enumerate(parameter_to_compare_values):
         algorithm_estimations = {name: [] for name in algorithms_to_compare.keys()}
@@ -46,9 +50,13 @@ def run_comparison(parameter_to_compare, algorithms_to_compare, nbSimulations, n
             
             # Exécution de chaque algorithme
             for name, algorithm_function in algorithms_to_compare.items():
+                start_time = time.time()  # Début de mesure du temps
                 estimated_angles = algorithm_function(X, nbSensors, nbSources)
+                end_time = time.time()  # Fin de mesure du temps
+
                 algorithm_estimations[name].append(estimated_angles)
                 original_counts[name] += 1
+                execution_times[name].append(end_time - start_time)  # Ajoute le temps d'exécution à la liste
 
         print(f"Pour {parameter_to_compare} = {value} :")
 
@@ -57,6 +65,8 @@ def run_comparison(parameter_to_compare, algorithms_to_compare, nbSimulations, n
             clean_estimation = remove_outliers([theta] * nbSimulations, algorithm_estimations[name])
             removed_outliers = original_counts[name] - len(clean_estimation[0])
             percent_outliers = 100 * removed_outliers / original_counts[name]
+            average_execution_time = np.mean(execution_times[name])
+            print(f"Temps moyen d'estimation pour une itération de {name}: {average_execution_time:.4f} secondes")
             print(f"{name}: {removed_outliers} outliers removed ({percent_outliers:.2f}%)")
             if len(clean_estimation[0]) > 0:
                 MSE_results[name][i] = calculate_MSE(clean_estimation[0], clean_estimation[1], two_symetrical_angles)
