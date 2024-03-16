@@ -54,9 +54,10 @@ def generate_S_matrix(nbSources, nbTimePoints, var_ratio, correlation_List, SNR_
     covariance_matrix += np.diag(adjusted_variances)
     
     # Génération de la matrice S avec la décomposition de Cholesky
-    L_cholesky = np.linalg.cholesky(covariance_matrix)
+    L_cholesky = np.linalg.cholesky(covariance_matrix/2)
     S = np.dot(np.random.normal(0, 1, (nbTimePoints, nbSources)) + 1j * np.random.normal(0, 1, (nbTimePoints, nbSources)), L_cholesky.T)
-    estimated_covariance_matrix = np.cov(S, rowvar=False)
+    centered_S = S - np.mean(S, axis=0)
+    estimated_covariance_matrix = np.real(np.cov(centered_S - np.mean(S, axis=0), rowvar=False))
     if get_CramerRao_data:
         return S, estimated_covariance_matrix
     else:
