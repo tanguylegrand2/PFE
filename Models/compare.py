@@ -4,6 +4,64 @@ import os
 import json
 from datetime import datetime
 import matplotlib.pyplot as plt
+import torch.nn as nn
+import torch.nn.functional as F
+
+class DeepMusicModel(nn.Module):
+    def __init__(self, output_size):
+        super(DeepMusicModel, self).__init__()
+        # Define the first convolutional layer
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=256, kernel_size=5, padding=2)
+        self.bn1 = nn.BatchNorm2d(num_features=256)
+        
+        # Define the second convolutional layer
+        self.conv2 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=5, padding=2)
+        self.bn2 = nn.BatchNorm2d(num_features=256)
+        
+        # Define the third convolutional layer
+        self.conv3 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding=1)
+        self.bn3 = nn.BatchNorm2d(num_features=256)
+        
+        # Define the fourth convolutional layer
+        self.conv4 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding=1)
+        self.bn4 = nn.BatchNorm2d(num_features=256)
+        
+        # Assuming the spatial dimensions (height and width) are reduced to 1x1 after the convolutions
+        # Define the fully connected layers
+        self.fc1 = nn.Linear(in_features=20736, out_features=output_size)
+        
+        # Dropout layer
+        self.dropout = nn.Dropout(p=0.5)
+
+        # Softmax layer 
+        self.softmax = nn.Softmax(dim=1)
+
+    def forward(self, x):
+        # Apply the first convolutional layer and normalization, followed by ReLU
+        x = F.relu(self.bn1(self.conv1(x)))
+        
+        # Apply the second convolutional layer and normalization, followed by ReLU
+        x = F.relu(self.bn2(self.conv2(x)))
+        
+        # Apply the third convolutional layer and normalization, followed by ReLU
+        x = F.relu(self.bn3(self.conv3(x)))
+        
+        # Apply the fourth convolutional layer and normalization, followed by ReLU
+        x = F.relu(self.bn4(self.conv4(x)))
+        
+        # Flatten the tensor for the fully connected layer
+        x = torch.flatten(x, 1)
+        
+        # Apply the first fully connected layer
+        x = self.fc1(x)
+        
+        # Apply the dropout layer
+        x = self.dropout(x)
+
+        #Apply the softmax layer
+        x = self.softmax(x)
+        
+        return x
 
 def save_models_hyperparams_and_metadata(models, hyperparameters_list, metadata_list, directory_name):
     # Base directory
@@ -75,12 +133,47 @@ def load_model_or_models(directory_name, model_class):
     hyperparameters_list = []
 
     # Charger les modèles et hyperparamètres
-    for model_file, hyperparams_file in zip(model_files, hyperparams_files):
+    for model_file, hyperparams_file, output in zip(model_files, hyperparams_files):
         model_path = os.path.join(model_dir, model_file)
         hyperparams_path = os.path.join(model_dir, hyperparams_file)
 
         # Charger l'état du modèle
         model = model_class()  # Créer une instance de la classe du modèle
+        model.load_state_dict(torch.load(model_path))
+        model.eval()  # Mettre le modèle en mode évaluation
+        models.append(model)
+
+        # Charger les hyperparamètres
+        with open(hyperparams_path, 'r') as f:
+            hyperparameters = json.load(f)
+        hyperparameters_list.append(hyperparameters)
+
+    # Si un seul modèle est chargé, retourner le modèle seul, sinon retourner la liste
+    if len(models) == 1:
+        return models[0], hyperparameters_list[0]
+    else:
+        return models, hyperparameters_list
+
+
+def load_deep_music(directory_name, model_class, outputs):
+    base_dir = 'Models'
+    model_dir = os.path.join(base_dir, directory_name)
+
+    # Trouver les fichiers de modèle et de métadonnées dans le dossier
+    files = os.listdir(model_dir)
+    model_files = [f for f in files if f.endswith('.pth')]
+    hyperparams_files = [f for f in files if f.endswith('_hyperparameters.json')]
+
+    models = []
+    hyperparameters_list = []
+
+    # Charger les modèles et hyperparamètres
+    for model_file, hyperparams_file, output in zip(model_files, hyperparams_files, outputs):
+        model_path = os.path.join(model_dir, model_file)
+        hyperparams_path = os.path.join(model_dir, hyperparams_file)
+
+        # Charger l'état du modèle
+        model = model_class(output)  # Créer une instance de la classe du modèle
         model.load_state_dict(torch.load(model_path))
         model.eval()  # Mettre le modèle en mode évaluation
         models.append(model)
