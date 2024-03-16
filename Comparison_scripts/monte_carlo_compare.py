@@ -73,7 +73,10 @@ def run_comparison(parameter_to_compare, algorithms_to_compare, nbiterations, nb
                 MSE_results[name][i] = np.nan
 
         # Calcul de la borne de Cramer-Rao pour la comparaison
-        Cramer_Rao[i] = get_CramerRao(nbTimePoints, A, P, D)
+        if parameter_to_compare != "nbTimePoints":
+            Cramer_Rao[i] = get_CramerRao(nbTimePoints, A, P, D)
+        else:
+            Cramer_Rao[i] = get_CramerRao(value, A, P, D)
         print("--------------------------------")
 
     # Affichage des résultats

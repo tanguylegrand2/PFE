@@ -16,14 +16,14 @@ def generate_steering_vector(nbSensors, theta, perturbation_parameter_sd=0, d=1,
         for i in range(nbSensors):
             # Calcul du perturbation_parameter
             perturbation_parameter = np.random.normal(1, perturbation_parameter_sd)
-            steering_vector.append(np.exp(-1j * perturbation_parameter * (i+1) * 2 * np.pi * d / wavelength * np.sin(np.radians(theta))))
-            D_t.append(-1j * perturbation_parameter * (i+1) * 2 * np.pi * d / wavelength * np.cos(np.radians(theta)) * np.exp(-1j * perturbation_parameter * (i+1) * 2 * np.pi * d / wavelength * np.sin(np.radians(theta))))
+            steering_vector.append(np.exp(-1j * perturbation_parameter * i * 2 * np.pi * d / wavelength * np.sin(np.radians(theta))))
+            D_t.append(-1j * perturbation_parameter * i * 2 * np.pi * d / wavelength * np.cos(np.radians(theta)) * np.exp(-1j * perturbation_parameter * i * 2 * np.pi * d / wavelength * np.sin(np.radians(theta))))
         return steering_vector, D_t
     else:
         for i in range(nbSensors):
             # Calcul du perturbation_parameter
             perturbation_parameter = np.random.normal(1, perturbation_parameter_sd)
-            steering_vector.append(np.exp(-1j * perturbation_parameter * (i+1) * 2 * np.pi * d / wavelength * np.sin(np.radians(theta))))
+            steering_vector.append(np.exp(-1j * perturbation_parameter * i * 2 * np.pi * d / wavelength * np.sin(np.radians(theta))))
         return steering_vector
 
 def generate_S_matrix(nbSources, nbTimePoints, var_ratio, correlation_List, SNR_dB, get_CramerRao_data=False):
@@ -36,7 +36,7 @@ def generate_S_matrix(nbSources, nbTimePoints, var_ratio, correlation_List, SNR_
     
     # Ajustement des variances pour respecter le SNR global
     total_variances_hypo = sum(variances_hypo)
-    var1 = SNR_linear / total_variances_hypo  # Ajustement de la variance du premier signal pour respecter le SNR
+    var1 = SNR_linear / total_variances_hypo * nbSources  # Ajustement de la variance du premier signal pour respecter le SNR
     adjusted_variances = [var1] + [var1 * ratio for ratio in var_ratio]
     
     # Gestion des erreurs pour la corrélation et les variances
@@ -56,8 +56,9 @@ def generate_S_matrix(nbSources, nbTimePoints, var_ratio, correlation_List, SNR_
     # Génération de la matrice S avec la décomposition de Cholesky
     L_cholesky = np.linalg.cholesky(covariance_matrix)
     S = np.dot(np.random.normal(0, 1, (nbTimePoints, nbSources)) + 1j * np.random.normal(0, 1, (nbTimePoints, nbSources)), L_cholesky.T)
+    estimated_covariance_matrix = np.cov(S, rowvar=False)
     if get_CramerRao_data:
-        return S, covariance_matrix
+        return S, estimated_covariance_matrix
     else:
         return S
 
