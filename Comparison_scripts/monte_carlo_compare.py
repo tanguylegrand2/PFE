@@ -121,3 +121,66 @@ def get_CramerRao(nbTimePoints, A, P, D):
     crlb = np.diag(term).real[0] / (2 * nbTimePoints) * noise_variance
     #print(f"-----\nValeur de la Cramer Rao Lower Bound : {crlb}")
     return crlb
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+import time
+
+def run_dl_model_comparison(models, parameter_to_compare, parameter_values, nbSimulations, nbSources, nbSensors, theta, T, Q, N, phi_max, rho, correlation_List, var_ratio, perturbation_parameter_sd, G):
+    valid_parameters = ["snr", "nbTimePoints", "correlation", "var_ratio", "perturbation_parameter_sd"]
+    if parameter_to_compare not in valid_parameters:
+        raise ValueError(f"parameter_to_compare doit être l'un des suivants : {valid_parameters}")
+
+    # Initialisation des tableaux pour stocker les métriques
+    loss_results = {name: np.zeros(len(parameter_values)) for name in models.keys()}
+    accuracy_results = {name: np.zeros(len(parameter_values)) for name in models.keys()}
+    execution_times = {name: [] for name in models.keys()}
+
+    for i, value in enumerate(parameter_values):
+        # Génération des données en fonction du modèle
+        if isinstance(models[list(models.keys())[0]], DeepMusicModel):
+            training_data = generate_deepmusic_partitioned_data(nbSensors, nbSources, T, value, Q, N, phi_max, rho, correlation_List, var_ratio)
+        elif isinstance(models[list(models.keys())[0]], DAOEstimatorModel):
+            training_data = generation_donnees(phi_max, rho, value, correlation_List, var_ratio)
+
+        for name, model in models.items():
+            # Préparation pour l'entraînement / test
+            # ...
+
+            # Boucle d'entraînement / test
+            start_time = time.time()
+            # Exécuter l'entraînement et le test du modèle ici
+            # ...
+            end_time = time.time()
+
+            # Enregistrement des métriques
+            execution_times[name].append(end_time - start_time)
+            # Enregistrement des loss et accuracy
+            # ...
+
+        print(f"Pour {parameter_to_compare} = {value} :")
+        # Affichage des métriques pour chaque modèle
+        # ...
+
+    # Affichage des résultats
+    plt.figure(figsize=(10, 6))
+    for name in models.keys():
+        plt.plot(parameter_values, loss_results[name], label=f'{name} Loss')
+        plt.plot(parameter_values, accuracy_results[name], label=f'{name} Accuracy', linestyle='--')
+        plt.title(f"Performance en fonction de {parameter_to_compare}")
+        plt.xlabel(parameter_to_compare)
+        plt.ylabel("Métrique")
+        plt.legend()
+        plt.grid(True)
+    plt.show()
+
+    plt.figure(figsize=(10, 6))
+    for name in models.keys():
+        plt.plot(parameter_values, execution_times[name], label=f'{name} Execution Time')
+    plt.title(f"Temps d'exécution par {parameter_to_compare}")
+    plt.xlabel(parameter_to_compare)
+    plt.ylabel("Temps (s)")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
