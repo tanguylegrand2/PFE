@@ -30,6 +30,7 @@ def run_comparison(parameter_to_compare, algorithms_to_compare, nbiterations, nb
     for i, value in enumerate(parameter_to_compare_values):
         algorithm_estimations = {name: [] for name in algorithms_to_compare.keys()}
         original_counts = {name: 0 for name in algorithms_to_compare.keys()}
+        all_Cramer_Rao = []
 
         # Iterations
         for _ in range(nbiterations):
@@ -55,6 +56,12 @@ def run_comparison(parameter_to_compare, algorithms_to_compare, nbiterations, nb
                 original_counts[name] += 1
                 execution_times[name].append(end_time - start_time)  # Ajoute le temps d'exécution à la liste
 
+            if parameter_to_compare != "nbTimePoints":
+                single_Cramer_Rao = get_CramerRao(nbTimePoints, A, P, D)
+            else:
+                single_Cramer_Rao = get_CramerRao(value, A, P, D)
+            all_Cramer_Rao.append(single_Cramer_Rao)
+
         print(f"Pour {parameter_to_compare} = {value} :")
 
         # Calcul de l'EQM pour chaque algorithme
@@ -73,10 +80,8 @@ def run_comparison(parameter_to_compare, algorithms_to_compare, nbiterations, nb
                 MSE_results[name][i] = np.nan
 
         # Calcul de la borne de Cramer-Rao pour la comparaison
-        if parameter_to_compare != "nbTimePoints":
-            Cramer_Rao[i] = get_CramerRao(nbTimePoints, A, P, D)
-        else:
-            Cramer_Rao[i] = get_CramerRao(value, A, P, D)
+        Cramer_Rao[i] = np.mean(all_Cramer_Rao)
+        print(f"-----\nValeur de la Cramer Rao Lower Bound : {Cramer_Rao[i]}")
         print("--------------------------------")
 
     # Affichage des résultats
@@ -113,5 +118,5 @@ def get_CramerRao(nbTimePoints, A, P, D):
     noise_variance = 1  # Sigma est fixé à 1
     term = np.linalg.inv((D.conj().T @ (np.eye(A.shape[0]) - A @ np.linalg.inv(A.conj().T @ A) @ A.conj().T) @ D) * P.T)
     crlb = np.diag(term).real[0] / (2 * nbTimePoints) * noise_variance
-    print(f"-----\nValeur de la Cramer Rao Lower Bound : {crlb}")
+    #print(f"-----\nValeur de la Cramer Rao Lower Bound : {crlb}")
     return crlb
