@@ -20,8 +20,8 @@ def run_comparison(parameter_to_compare, algorithms_to_compare, nbiterations, nb
     elif parameter_to_compare == "perturbation_parameter_sd":
         parameter_to_compare_values = perturbation_parameter_sd
     
-    # Préparation des tableaux pour stocker les REQM pour chaque algorithme
-    RMSE_results = {name: np.zeros(len(parameter_to_compare_values)) for name in algorithms_to_compare.keys()}
+    # Préparation des tableaux pour stocker les EQM pour chaque algorithme
+    MSE_results = {name: np.zeros(len(parameter_to_compare_values)) for name in algorithms_to_compare.keys()}
     Cramer_Rao = np.zeros(len(parameter_to_compare_values))
 
     execution_times = {name: [] for name in algorithms_to_compare.keys()}
@@ -64,7 +64,7 @@ def run_comparison(parameter_to_compare, algorithms_to_compare, nbiterations, nb
 
         print(f"Pour {parameter_to_compare} = {value} :")
 
-        # Calcul de l'REQM pour chaque algorithme
+        # Calcul de l'EQM pour chaque algorithme
         for name in algorithms_to_compare.keys():
             print("-----")
             clean_estimation = remove_outliers([theta] * nbiterations, algorithm_estimations[name])
@@ -74,10 +74,10 @@ def run_comparison(parameter_to_compare, algorithms_to_compare, nbiterations, nb
             print(f"Temps moyen d'estimation pour une itération de {name}: {average_execution_time:.4f} secondes")
             print(f"{name}: {removed_outliers} outliers removed ({percent_outliers:.2f}%)")
             if len(clean_estimation[0]) > 0:
-                RMSE_results[name][i] = calculate_RMSE(clean_estimation[0], clean_estimation[1], two_symetrical_angles)
-                print(f"Valeur pour {name} : {RMSE_results[name][i]}")
+                MSE_results[name][i] = calculate_MSE(clean_estimation[0], clean_estimation[1], two_symetrical_angles)
+                print(f"Valeur pour {name} : {MSE_results[name][i]}")
             else:
-                RMSE_results[name][i] = np.nan
+                MSE_results[name][i] = np.nan
 
         # Calcul de la borne de Cramer-Rao pour la comparaison
         Cramer_Rao[i] = np.mean(all_Cramer_Rao)
@@ -86,12 +86,12 @@ def run_comparison(parameter_to_compare, algorithms_to_compare, nbiterations, nb
 
     # Affichage des résultats
     plt.figure(figsize=(10, 6))
-    for name, rmse in RMSE_results.items():
-        plt.plot(parameter_to_compare_values, rmse, label=name)
+    for name, mse in MSE_results.items():
+        plt.plot(parameter_to_compare_values, mse, label=name)
     plt.plot(parameter_to_compare_values, Cramer_Rao, label='Cramer-Rao Bound', linestyle='--', marker='^', color='red')
-    plt.title(f"RMSE en fonction de la variable {parameter_to_compare}")
+    plt.title(f"MSE en fonction de la variable {parameter_to_compare}")
     plt.xlabel(parameter_to_compare)
-    plt.ylabel("Root Mean Square Error (RMSE)")
+    plt.ylabel("Root Mean Square Error (MSE)")
     plt.yscale("log")
     plt.legend()
     plt.grid(True)
@@ -107,80 +107,17 @@ def remove_outliers(real_theta_list, theta_hat_list):
             theta_hat_clean.append(theta_hat)
     return real_theta_clean, theta_hat_clean
 
-# Fonction pour calculer l'REQM
-def calculate_RMSE(real_theta, theta_hat, two_symetrical_angles):
+# Fonction pour calculer l'EQM
+def calculate_MSE(real_theta, theta_hat, two_symetrical_angles):
     if two_symetrical_angles:
-        rmse = np.mean([(rt - th) ** 2 for rt, th in zip(real_theta, theta_hat)])
+        mse = np.mean([(rt - th) ** 2 for rt, th in zip(real_theta, theta_hat)])
     else:
-        rmse = np.mean([(rt[0] - th[0]) ** 2 for rt, th in zip(real_theta, theta_hat)])
-    return np.sqrt(rmse)
+        mse = np.mean([(rt[0] - th[0]) ** 2 for rt, th in zip(real_theta, theta_hat)])
+    return mse
 
 def get_CramerRao(nbTimePoints, A, P, D):
     noise_variance = 1  # Sigma est fixé à 1
-    term = np.linalg.inv((D.conj().T @ (np.eye(A.shape[0]) - A @ np.linalg.inv(A.conj().T @ A) @ A.conj().T) @ D) * P.T)
-    crlb = np.diag(term).real[0] / (2 * nbTimePoints) * noise_variance
+    term = np.linalg.inv(((D.conj().T @ (np.eye(A.shape[0]) - A @ np.linalg.inv(A.conj().T @ A) @ A.conj().T) @ D) * P.T).real)
+    crlb = np.diag(term)[0] / (2 * nbTimePoints) * noise_variance
     #print(f"-----\nValeur de la Cramer Rao Lower Bound : {crlb}")
-    return crlb
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-import time
-
-def run_dl_model_comparison(models, parameter_to_compare, parameter_values, nbSimulations, nbSources, nbSensors, theta, T, Q, N, phi_max, rho, correlation_List, var_ratio, perturbation_parameter_sd, G):
-    valid_parameters = ["snr", "nbTimePoints", "correlation", "var_ratio", "perturbation_parameter_sd"]
-    if parameter_to_compare not in valid_parameters:
-        raise ValueError(f"parameter_to_compare doit être l'un des suivants : {valid_parameters}")
-
-    # Initialisation des tableaux pour stocker les métriques
-    loss_results = {name: np.zeros(len(parameter_values)) for name in models.keys()}
-    accuracy_results = {name: np.zeros(len(parameter_values)) for name in models.keys()}
-    execution_times = {name: [] for name in models.keys()}
-
-    for i, value in enumerate(parameter_values):
-        # Génération des données en fonction du modèle
-        if isinstance(models[list(models.keys())[0]], DeepMusicModel):
-            training_data = generate_deepmusic_partitioned_data(nbSensors, nbSources, T, value, Q, N, phi_max, rho, correlation_List, var_ratio)
-        elif isinstance(models[list(models.keys())[0]], DAOEstimatorModel):
-            training_data = generation_donnees(phi_max, rho, value, correlation_List, var_ratio)
-
-        for name, model in models.items():
-            # Préparation pour l'entraînement / test
-            # ...
-
-            # Boucle d'entraînement / test
-            start_time = time.time()
-            # Exécuter l'entraînement et le test du modèle ici
-            # ...
-            end_time = time.time()
-
-            # Enregistrement des métriques
-            execution_times[name].append(end_time - start_time)
-            # Enregistrement des loss et accuracy
-            # ...
-
-        print(f"Pour {parameter_to_compare} = {value} :")
-        # Affichage des métriques pour chaque modèle
-        # ...
-
-    # Affichage des résultats
-    plt.figure(figsize=(10, 6))
-    for name in models.keys():
-        plt.plot(parameter_values, loss_results[name], label=f'{name} Loss')
-        plt.plot(parameter_values, accuracy_results[name], label=f'{name} Accuracy', linestyle='--')
-        plt.title(f"Performance en fonction de {parameter_to_compare}")
-        plt.xlabel(parameter_to_compare)
-        plt.ylabel("Métrique")
-        plt.legend()
-        plt.grid(True)
-    plt.show()
-
-    plt.figure(figsize=(10, 6))
-    for name in models.keys():
-        plt.plot(parameter_values, execution_times[name], label=f'{name} Execution Time')
-    plt.title(f"Temps d'exécution par {parameter_to_compare}")
-    plt.xlabel(parameter_to_compare)
-    plt.ylabel("Temps (s)")
-    plt.legend()
-    plt.grid(True)
-    plt.show()
+    return crlb*7000

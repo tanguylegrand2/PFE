@@ -153,7 +153,23 @@ def load_model_or_models(directory_name, model_class):
         return models[0], hyperparameters_list[0]
     else:
         return models, hyperparameters_list
+    
+def load_model_without_hyperparams(directory_name, model_class):
+    base_dir = 'Models'
+    model_dir = os.path.join(base_dir, directory_name)
+    
+    # Trouver le fichier de modèle et de métadonnées dans le dossier
+    files = os.listdir(model_dir)
+    model_file = [f for f in files if f.endswith('.pth')][0]
+    
+    model_path = os.path.join(model_dir, model_file)
 
+    # Charger l'état du modèle
+    model = model_class()  # Créer une instance de la classe du modèle
+    model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+    model.eval()  # Mettre le modèle en mode évaluation
+
+    return model
 
 def load_deep_music(directory_name, model_class, outputs):
     base_dir = 'Models'
@@ -185,6 +201,7 @@ def load_deep_music(directory_name, model_class, outputs):
 
     # Si un seul modèle est chargé, retourner le modèle seul, sinon retourner la liste
     if len(models) == 1:
+        print(models[0], hyperparameters_list[0])
         return models[0], hyperparameters_list[0]
     else:
         return models, hyperparameters_list

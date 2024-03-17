@@ -4,7 +4,7 @@ from Plots.draw_plot import plot_single_music
 from scipy.signal import find_peaks
 
 def music_method(X, nbSensors, nbSources, print_angles = False, draw_plot = False):
-    angles_range = np.linspace(-90, 90, 1801) # Angles que l'on souhaite tester
+    angles_range = np.linspace(-60, 60, 1201) # Angles que l'on souhaite tester
     R_hat = generate_R_hat(X)
 
     # Calculer les vecteurs propres et les valeurs propres

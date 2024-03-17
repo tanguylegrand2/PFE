@@ -36,7 +36,8 @@ def generate_S_matrix(nbSources, nbTimePoints, var_ratio, correlation_List, SNR_
     
     # Ajustement des variances pour respecter le SNR global
     total_variances_hypo = sum(variances_hypo)
-    var1 = SNR_linear / total_variances_hypo * nbSources  # Ajustement de la variance du premier signal pour respecter le SNR
+    # sum_of_squares_variances_hypo = sum([var ** 2 for var in variances_hypo])
+    var1 = SNR_linear / total_variances_hypo * nbSources # * sum_of_squares_variances_hypo / total_variances_hypo  # Ajustement de la variance du premier signal pour respecter le SNR
     adjusted_variances = [var1] + [var1 * ratio for ratio in var_ratio]
     
     # Gestion des erreurs pour la corrélation et les variances
@@ -56,10 +57,11 @@ def generate_S_matrix(nbSources, nbTimePoints, var_ratio, correlation_List, SNR_
     # Génération de la matrice S avec la décomposition de Cholesky
     L_cholesky = np.linalg.cholesky(covariance_matrix/2)
     S = np.dot(np.random.normal(0, 1, (nbTimePoints, nbSources)) + 1j * np.random.normal(0, 1, (nbTimePoints, nbSources)), L_cholesky.T)
-    centered_S = S - np.mean(S, axis=0)
-    estimated_covariance_matrix = np.real(np.cov(centered_S - np.mean(S, axis=0), rowvar=False))
+    # centered_S = S - np.mean(S, axis=0)
+    # estimated_covariance_matrix = np.real(np.cov(centered_S - np.mean(S, axis=0), rowvar=False))
+    P = np.mean([np.outer(S[t, :], S[t, :].conj()) for t in range(S.shape[0])], axis=0)
     if get_CramerRao_data:
-        return S, estimated_covariance_matrix
+        return S, P
     else:
         return S
 
