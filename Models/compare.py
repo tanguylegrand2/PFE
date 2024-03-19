@@ -4,6 +4,8 @@ import os
 import json
 from datetime import datetime
 import matplotlib.pyplot as plt
+
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -26,12 +28,17 @@ class DeepMusicModel(nn.Module):
         self.conv4 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding=1)
         self.bn4 = nn.BatchNorm2d(num_features=256)
         
-        # Assuming the spatial dimensions (height and width) are reduced to 1x1 after the convolutions
-        # Define the fully connected layers
-        self.fc1 = nn.Linear(in_features=20736, out_features=output_size)
+        # Global average pooling layer
+        self.global_pooling = nn.AdaptiveAvgPool2d(1)
+        
+        # Fully connected layer
+        self.fc1 = nn.Linear(256, 4096)
+        self.fc2= nn.Linear(in_features=4096, out_features=2048)
+        self.fc3 = nn.Linear(in_features=2048, out_features=1024)
+        self.fc4 = nn.Linear(in_features=1024, out_features=output_size)
         
         # Dropout layer
-        self.dropout = nn.Dropout(p=0.5)
+        self.dropout = nn.Dropout(p=0.2)
 
         # Softmax layer 
         self.softmax = nn.Softmax(dim=1)
@@ -49,19 +56,60 @@ class DeepMusicModel(nn.Module):
         # Apply the fourth convolutional layer and normalization, followed by ReLU
         x = F.relu(self.bn4(self.conv4(x)))
         
-        # Flatten the tensor for the fully connected layer
-        x = torch.flatten(x, 1)
+        # Apply global average pooling
+        x = self.global_pooling(x)
         
-        # Apply the first fully connected layer
+        # Reshape for the fully connected layer
+        x = x.view(x.size(0), -1)
+        
+        # Apply the fully connected layer
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        x = self.fc4(x)
+
+        # Apply the dropout layer
+        x = self.dropout(x)
+
+        # Apply the softmax layer
+        x = self.softmax(x)
+
+        return x
+
+
+    def forward(self, x):
+        # Apply the first convolutional layer and normalization, followed by ReLU
+        x = F.relu(self.bn1(self.conv1(x)))
+        
+        # Apply the second convolutional layer and normalization, followed by ReLU
+        x = F.relu(self.bn2(self.conv2(x)))
+        
+        # Apply the third convolutional layer and normalization, followed by ReLU
+        x = F.relu(self.bn3(self.conv3(x)))
+        
+        # Apply the fourth convolutional layer and normalization, followed by ReLU
+        x = F.relu(self.bn4(self.conv4(x)))
+        
+        # Apply global average pooling
+        x = self.global_pooling(x)
+        
+        # Reshape for the fully connected layer
+        x = x.view(x.size(0), -1)
+        
+        # Apply the fully connected layer
         x = self.fc1(x)
         
         # Apply the dropout layer
         x = self.dropout(x)
 
-        #Apply the softmax layer
+        # Apply the softmax layer
         x = self.softmax(x)
-        
+
         return x
+
+
+
+
 
 def save_models_hyperparams_and_metadata(models, hyperparameters_list, metadata_list, directory_name):
     # Base directory
