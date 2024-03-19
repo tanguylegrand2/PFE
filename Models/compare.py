@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class DeepMusicModel(nn.Module):
     def __init__(self, output_size):
         super(DeepMusicModel, self).__init__()
@@ -28,17 +29,11 @@ class DeepMusicModel(nn.Module):
         self.conv4 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding=1)
         self.bn4 = nn.BatchNorm2d(num_features=256)
         
-        # Global average pooling layer
-        self.global_pooling = nn.AdaptiveAvgPool2d(1)
-        
         # Fully connected layer
-        self.fc1 = nn.Linear(256, 4096)
-        self.fc2= nn.Linear(in_features=4096, out_features=2048)
-        self.fc3 = nn.Linear(in_features=2048, out_features=1024)
-        self.fc4 = nn.Linear(in_features=1024, out_features=output_size)
+        self.fc1 = nn.Linear(20736, output_size)
         
         # Dropout layer
-        self.dropout = nn.Dropout(p=0.2)
+        self.dropout = nn.Dropout(p=0.5)
 
         # Softmax layer 
         self.softmax = nn.Softmax(dim=1)
@@ -56,17 +51,10 @@ class DeepMusicModel(nn.Module):
         # Apply the fourth convolutional layer and normalization, followed by ReLU
         x = F.relu(self.bn4(self.conv4(x)))
         
-        # Apply global average pooling
-        x = self.global_pooling(x)
-        
         # Reshape for the fully connected layer
         x = x.view(x.size(0), -1)
-        
-        # Apply the fully connected layer
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
-        x = self.fc4(x)
+
+        x = self.fc1(x)
 
         # Apply the dropout layer
         x = self.dropout(x)
@@ -75,6 +63,7 @@ class DeepMusicModel(nn.Module):
         x = self.softmax(x)
 
         return x
+
 
 
     def forward(self, x):
@@ -89,9 +78,6 @@ class DeepMusicModel(nn.Module):
         
         # Apply the fourth convolutional layer and normalization, followed by ReLU
         x = F.relu(self.bn4(self.conv4(x)))
-        
-        # Apply global average pooling
-        x = self.global_pooling(x)
         
         # Reshape for the fully connected layer
         x = x.view(x.size(0), -1)
