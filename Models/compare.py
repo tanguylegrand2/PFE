@@ -10,27 +10,28 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+
 class DeepMusicModel(nn.Module):
     def __init__(self, output_size):
         super(DeepMusicModel, self).__init__()
-        # Define the first convolutional layer
-        self.conv1 = nn.Conv2d(in_channels=3, out_channels=256, kernel_size=5, padding=2)
+        # Define the first convolutional layer with adjusted stride and padding
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=256, kernel_size=5, stride=1, padding=2)
         self.bn1 = nn.BatchNorm2d(num_features=256)
         
-        # Define the second convolutional layer
-        self.conv2 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=5, padding=2)
+        # Define the second convolutional layer with adjusted stride and padding
+        self.conv2 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=5, stride=2, padding=2)
         self.bn2 = nn.BatchNorm2d(num_features=256)
         
-        # Define the third convolutional layer
-        self.conv3 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding=1)
+        # Define the third convolutional layer with adjusted stride and padding
+        self.conv3 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, stride=1, padding=1)
         self.bn3 = nn.BatchNorm2d(num_features=256)
         
-        # Define the fourth convolutional layer
-        self.conv4 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding=1)
+        # Define the fourth convolutional layer with adjusted stride and padding
+        self.conv4 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, stride=1, padding=1)
         self.bn4 = nn.BatchNorm2d(num_features=256)
         
         # Fully connected layer
-        self.fc1 = nn.Linear(20736, output_size)
+        self.fc1 = nn.Linear(6400, output_size)
         
         # Dropout layer
         self.dropout = nn.Dropout(p=0.5)
@@ -56,35 +57,6 @@ class DeepMusicModel(nn.Module):
 
         x = self.fc1(x)
 
-        # Apply the dropout layer
-        x = self.dropout(x)
-
-        # Apply the softmax layer
-        x = self.softmax(x)
-
-        return x
-
-
-
-    def forward(self, x):
-        # Apply the first convolutional layer and normalization, followed by ReLU
-        x = F.relu(self.bn1(self.conv1(x)))
-        
-        # Apply the second convolutional layer and normalization, followed by ReLU
-        x = F.relu(self.bn2(self.conv2(x)))
-        
-        # Apply the third convolutional layer and normalization, followed by ReLU
-        x = F.relu(self.bn3(self.conv3(x)))
-        
-        # Apply the fourth convolutional layer and normalization, followed by ReLU
-        x = F.relu(self.bn4(self.conv4(x)))
-        
-        # Reshape for the fully connected layer
-        x = x.view(x.size(0), -1)
-        
-        # Apply the fully connected layer
-        x = self.fc1(x)
-        
         # Apply the dropout layer
         x = self.dropout(x)
 
